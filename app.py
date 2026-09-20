@@ -285,12 +285,8 @@ else:
     with tick_col2:
         y_tick = optional_number("Y major tick interval", "y_tick")
 
-if x_min is not None and x_max is not None and x_min >= x_max:
-    st.error("X minimum must be smaller than X maximum.")
-    st.stop()
-if y_min is not None and y_max is not None and y_min >= y_max:
-    st.error("Y minimum must be smaller than Y maximum.")
-    st.stop()
+
+
 
 option_col1, option_col2, option_col3 = st.columns(3)
 with option_col1:

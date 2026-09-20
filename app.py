@@ -365,7 +365,12 @@ if create_plot:
             trace_step = 1.0 + trace_gap
 
             for dataset_index, dataset in enumerate(datasets):
-                independently_scaled_y = normalize_trace(dataset["y"])
+                iindependently_scaled_y = normalize_trace(
+                     dataset["y"],
+                     x_values=dataset["x"],
+                     x_min=x_min,
+                     x_max=x_max,
+                )
                 stacked_y = independently_scaled_y + dataset_index * trace_step
                 add_dataset_to_axis(
                     ax,

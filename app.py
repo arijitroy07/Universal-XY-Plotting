@@ -408,14 +408,30 @@ if create_plot:
             )
             axes = axes.ravel()
 
-            common_y_min = common_y_max = None
+            common_y_min = None
+            common_y_max = None
+
             if fixed_panel_y:
-                all_y = np.concatenate([dataset["y"] for dataset in datasets])
-                common_y_min = y_min if y_min is not None else np.nanmin(all_y)
-                common_y_max = y_max if y_max is not None else np.nanmax(all_y)
-                if common_y_min == common_y_max:
-                    common_y_min -= 1
-                    common_y_max += 1
+                auto_y_min, auto_y_max = visible_y_limits(
+                    [
+                        (dataset["x"], dataset["y"])
+                        for dataset in datasets
+                    ],
+                    x_min,
+                    x_max,
+                )
+
+                common_y_min = (
+                    y_min
+                    if y_min is not None
+                    else auto_y_min
+                )
+
+                common_y_max = (
+                    y_max
+                    if y_max is not None
+                    else auto_y_max
+                )
 
             for ax, dataset in zip(axes, datasets):
                 add_dataset_to_axis(

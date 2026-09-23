@@ -763,11 +763,15 @@ elif layout_mode == "Stacked panels":
 # --------
 # 1. Choose one dataset when several files are uploaded.
 # 2. Choose whether fitting points are selected using an X range or Y range.
-# 3. Enter the directed start and end values. Their order is retained, allowing
+# 3. For a Y-defined range that occurs more than once, choose the first or
+#    last continuous branch in the uploaded data order.
+# 4. Enter the directed start and end values. Their order is retained, allowing
 #    the final coordinate differences to be positive or negative.
-# 4. slope_tools.py performs a least-squares fit of Y = mX + b.
-# 5. The fitted segment is clipped against customized visible plot limits.
-# 6. Its visible start, end, and signed differences are displayed as text.
+# 5. For an X-defined range, slope_tools.py fits Y as a function of X.
+# 6. For a Y-defined range, slope_tools.py fits X as a function of Y. This
+#    provides stable fitting for vertical and nearly vertical data sections.
+# 7. The fitted segment is clipped against customized visible plot limits.
+# 8. Its visible start, end, and signed differences are displayed as text.
 # ============================================================
 
 st.subheader("Optional slope line")
@@ -777,8 +781,8 @@ show_slope = st.checkbox(
     value=False,
 )
 
-# Defaults are defined even when the checkbox is not selected. This ensures
-# these variables always exist when the plotting section is evaluated.
+# These default values are defined even when the slope checkbox is not selected.
+# This ensures that every variable exists when the plotting section is executed.
 slope_dataset_index = 0
 slope_range_axis = "X axis"
 slope_range_start = None
@@ -788,24 +792,28 @@ slope_line_color = "#D62728"
 slope_line_width = 2.0
 slope_line_style = "--"
 
-# Determines which continuous curve branch is used when the selected
-# Y range occurs more than once in the dataset.
+# Default branch selection for a Y-defined range. This value remains available
+# when an X-defined range is selected, although it is not used in that case.
 slope_y_branch = "First matching branch"
+
 
 if show_slope:
 
-    # Slope controls are created only after the feature is selected. Keeping
-    # them conditional prevents additional settings from cluttering normal use.
+    # These controls are displayed only when the user selects the slope option.
     st.caption(
-        "The app fits Y = mX + b using points inside the selected X or Y "
-        "range. For a repeated Y range, choose which continuous curve branch "
-        "to use. The fitted segment is clipped to customized plot limits."
+        "The app fits a straight line using points inside the selected X or Y "
+        "range. If a Y range occurs more than once, select the continuous curve "
+        "branch that should be fitted. The fitted segment is clipped to the "
+        "customized visible plot limits."
     )
 
-    slope_dataset_index = st.selectbox(
+    # --------------------------------------------------------
+    # DATASET SELECTION
+    # The numerical dataset index is stored because two uploaded
+    # files may have identical or user-edited legend labels.
+    # --------------------------------------------------------
 
-        # The index is stored rather than the label because labels may be
-        # duplicated or edited by the user.
+    slope_dataset_index = st.selectbox(
         "Dataset used for the slope",
         options=list(range(len(datasets))),
         format_func=lambda index: (
@@ -813,22 +821,30 @@ if show_slope:
         ),
     )
 
+    # --------------------------------------------------------
+    # RANGE-AXIS SELECTION
+    # X axis selects points according to X values.
+    # Y axis selects one continuous branch according to Y values.
+    # --------------------------------------------------------
+
     slope_range_axis = st.radio(
         "Define the fitting range using",
         ["X axis", "Y axis"],
         horizontal=True,
     )
 
-    if slope_range_axis == "Y axis":
-    slope_range_axis = st.radio(
-        "Define the fitting range using",
-        ["X axis", "Y axis"],
-        horizontal=True,
-    )
+    # --------------------------------------------------------
+    # Y-BRANCH SELECTION
+    # A nonmonotonic curve can pass through the same Y range more
+    # than once. For example, loading and unloading portions may
+    # both contain Y values between 1500 and 2000.
+    #
+    # "First matching branch" uses the earliest continuous section
+    # according to the uploaded row order.
+    #
+    # "Last matching branch" uses the latest continuous section.
+    # --------------------------------------------------------
 
-    # Show branch selection only when the slope range is defined using Y.
-    # This is needed when the curve passes through the same Y range more
-    # than once, such as separate loading and unloading branches.
     if slope_range_axis == "Y axis":
         slope_y_branch = st.selectbox(
             "When this Y range occurs more than once",
@@ -837,17 +853,25 @@ if show_slope:
                 "Last matching branch",
             ],
             help=(
-                "First matching branch uses the earliest matching section in "
-                "the uploaded row order. Last matching branch uses the latest "
-                "matching section."
+                "First matching branch uses the earliest continuous section "
+                "in the uploaded row order. Last matching branch uses the "
+                "latest continuous section."
             ),
         )
 
+    # Retrieve the complete selected dataset after its index has been chosen.
+    # This assignment should appear only once in this section.
     slope_dataset = datasets[slope_dataset_index]
 
-    # Default range endpoints use the middle 50% of the chosen coordinate.
-    # This normally provides enough points for an initial fit while avoiding
-    # automatic use of the extreme edges of the dataset.
+    # --------------------------------------------------------
+    # DEFAULT RANGE CALCULATION
+    # The initial start and end values use the 25th and 75th
+    # percentiles of the selected X or Y coordinate.
+    #
+    # These values are only defaults for the input boxes. The user
+    # can replace them with any desired start and end values.
+    # --------------------------------------------------------
+
     range_values = (
         slope_dataset["x"]
         if slope_range_axis == "X axis"
@@ -859,6 +883,7 @@ if show_slope:
         dtype=float,
     )
 
+    # Remove NaN and infinite values before calculating percentiles.
     finite_range_values = finite_range_values[
         np.isfinite(finite_range_values)
     ]
@@ -869,12 +894,19 @@ if show_slope:
             [25, 75],
         )
     else:
+        # Defensive fallback if the selected coordinate contains no
+        # finite values. Normally this condition should not be reached
+        # because invalid X-Y pairs are removed during file processing.
         default_start, default_end = 0.0, 1.0
+
+    # --------------------------------------------------------
+    # USER-DEFINED RANGE INPUT
+    # Separate keys are used for X and Y so Streamlit remembers
+    # their values independently when the range axis is changed.
+    # --------------------------------------------------------
 
     range_col1, range_col2 = st.columns(2)
 
-    # Separate widget keys preserve independent remembered values when the user
-    # switches between X-defined and Y-defined ranges.
     range_key = (
         "x"
         if slope_range_axis == "X axis"
@@ -897,10 +929,14 @@ if show_slope:
             key=f"slope_range_end_{range_key}",
         )
 
+    # --------------------------------------------------------
+    # SLOPE-LINE APPEARANCE
+    # These settings change only how the fitted line is displayed.
+    # They do not change the selected data or mathematical fit.
+    # --------------------------------------------------------
+
     slope_style_col1, slope_style_col2, slope_style_col3 = st.columns(3)
 
-    # These settings affect only the appearance and legend entry of the fitted
-    # line. They do not change the fitted coordinates or calculated slope.
     with slope_style_col1:
         slope_line_label = st.text_input(
             "Slope legend label",
@@ -932,7 +968,6 @@ if show_slope:
             "-.": "Dash-dot",
         }[style],
     )
-
 
 # ============================================================
 # SECTION 4 - EXPLICIT PLOT GENERATION

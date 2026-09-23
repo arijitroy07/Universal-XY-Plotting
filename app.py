@@ -820,19 +820,29 @@ if show_slope:
     )
 
     if slope_range_axis == "Y axis":
-    slope_y_branch = st.selectbox(
-        "When this Y range occurs more than once",
-        [
-            "First matching branch",
-            "Last matching branch",
-        ],
-        help=(
-            "First matching branch uses the earliest matching section in "
-            "the uploaded row order. Last matching branch uses the latest "
-            "matching section."
-        ),
+    slope_range_axis = st.radio(
+        "Define the fitting range using",
+        ["X axis", "Y axis"],
+        horizontal=True,
     )
-    
+
+    # Show branch selection only when the slope range is defined using Y.
+    # This is needed when the curve passes through the same Y range more
+    # than once, such as separate loading and unloading branches.
+    if slope_range_axis == "Y axis":
+        slope_y_branch = st.selectbox(
+            "When this Y range occurs more than once",
+            [
+                "First matching branch",
+                "Last matching branch",
+            ],
+            help=(
+                "First matching branch uses the earliest matching section in "
+                "the uploaded row order. Last matching branch uses the latest "
+                "matching section."
+            ),
+        )
+
     slope_dataset = datasets[slope_dataset_index]
 
     # Default range endpoints use the middle 50% of the chosen coordinate.

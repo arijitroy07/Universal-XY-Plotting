@@ -788,13 +788,18 @@ slope_line_color = "#D62728"
 slope_line_width = 2.0
 slope_line_style = "--"
 
+# Determines which continuous curve branch is used when the selected
+# Y range occurs more than once in the dataset.
+slope_y_branch = "First matching branch"
+
 if show_slope:
 
     # Slope controls are created only after the feature is selected. Keeping
     # them conditional prevents additional settings from cluttering normal use.
     st.caption(
         "The app fits Y = mX + b using points inside the selected X or Y "
-        "range. The fitted segment is clipped to customized plot limits."
+        "range. For a repeated Y range, choose which continuous curve branch "
+        "to use. The fitted segment is clipped to customized plot limits."
     )
 
     slope_dataset_index = st.selectbox(
@@ -814,6 +819,22 @@ if show_slope:
         horizontal=True,
     )
 
+    if slope_range_axis == "Y axis":
+    slope_y_branch = st.selectbox(
+        "When this Y range occurs more than once",
+        [
+            "First matching branch",
+            "Last matching branch",
+        ],
+        help=(
+            "First matching branch uses the earliest matching section in "
+            "the uploaded row order. Last matching branch uses the latest "
+            "matching section."
+        ),
+    )
+
+
+    
     slope_dataset = datasets[slope_dataset_index]
 
     # Default range endpoints use the middle 50% of the chosen coordinate.
@@ -988,6 +1009,7 @@ if create_plot:
                     visible_x_max=x_max,
                     visible_y_min=effective_y_min,
                     visible_y_max=effective_y_max,
+                    y_branch=slope_y_branch,
                 )
 
                 add_slope_line(
@@ -1088,6 +1110,7 @@ if create_plot:
                         slope_range_end,
                         visible_x_min=x_min,
                         visible_x_max=x_max,
+                        y_branch=slope_y_branch,
                     )
 
                     # Only the two displayed slope Y coordinates are mapped into
@@ -1250,6 +1273,7 @@ if create_plot:
                         visible_x_max=x_max,
                         visible_y_min=panel_y_min,
                         visible_y_max=panel_y_max,
+                        y_branch=slope_y_branch,
                     )
 
                     add_slope_line(

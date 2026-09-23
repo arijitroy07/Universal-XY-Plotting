@@ -832,8 +832,6 @@ if show_slope:
             "matching section."
         ),
     )
-
-
     
     slope_dataset = datasets[slope_dataset_index]
 

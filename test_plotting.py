@@ -1,6 +1,7 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
-from plotting import normalize_trace
+from plotting import apply_axis_settings, normalize_trace
 
 
 def test_normalize_trace_uses_each_trace_own_range():
@@ -13,3 +14,10 @@ def test_normalize_trace_uses_each_trace_own_range():
 def test_normalize_constant_trace_centers_it():
     scaled = normalize_trace(np.array([5.0, 5.0, 5.0]))
     np.testing.assert_allclose(scaled, [0.5, 0.5, 0.5])
+
+
+def test_x_axis_accepts_reversed_limits():
+    fig, axis = plt.subplots()
+    apply_axis_settings(axis, 100.0, 0.0, None, None, None, None, False)
+    assert axis.get_xlim() == (100.0, 0.0)
+    plt.close(fig)
